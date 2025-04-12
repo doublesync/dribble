@@ -1,3 +1,4 @@
+import os
 import json
 import pymem
 
@@ -10,8 +11,8 @@ offsets = None
 
 
 # Function to fetch offsets from a JSON file
-def FetchOffsets():
-    offsets_file = open("resources/offsets.json", "r")
+def FetchOffsets(file_path):
+    offsets_file = open(file_path, "r")
     offsets_dict = json.load(offsets_file)
     return offsets_dict
 
@@ -64,6 +65,7 @@ def GetOffset(category, key):
     :param category: The category of the offset (e.g., "Attributes").
     :param key: The key of the offset (e.g., "Driving Layup").
     """
+    # Check if the offsets dictionary is initialized
     category = offsets.get(category, None)
     if category:
         for offset in category:
@@ -74,12 +76,14 @@ def GetOffset(category, key):
 
 
 # Function to initialize offset
-def InitializeOffsets():
+def InitializeOffsets(file_path):
     """
     Initialize offsets by fetching and formatting them from the JSON file.
     """
     global offsets
-    offsets = FetchOffsets()
+    # Check if a file path is provided; if not, use the default path
+    offsets = FetchOffsets(file_path)
+    # Format the offsets to hexadecimal
     if offsets:
         offsets = FormatOffsets(offsets)
         if not offsets:
