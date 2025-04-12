@@ -350,7 +350,3 @@ def BuildPlayer(game, player_id, explicit_player_address=None):
 
     except pymem.exception.MemoryReadError:
         return None
-
-
-# Initialize the offsets
-InitializeOffsets()
