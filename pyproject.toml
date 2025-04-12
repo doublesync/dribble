@@ -1,0 +1,19 @@
+# Project metadata for Dribble
+[project]
+name = "dribble"
+version = "0.1.0"
+description = "A memory and game object helper for NBA2K."
+
+# Author details for Dribble
+authors = [
+    { name = "doublesync", email = "chriscarltoncs@gmail.com" }
+]
+
+# Project dependencies
+dependencies = [
+    "pymem==1.14.0",
+    "rich==13.9.4"
+]
+
+# License type and file
+license = "MIT"
