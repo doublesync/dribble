@@ -35,6 +35,9 @@ def FormatOffsets(offsets_dict):
                         except ValueError:
                             print(f"Error converting {key}: {value}")
                             formatted_offsets[category][key] = value
+                    else:
+                        # Otherwise, keep the original value
+                        formatted_offsets[category][key] = value
             else:
                 # The rest of the categories are lists of dictionaries
                 formatted_offsets[category] = []
@@ -76,20 +79,22 @@ def GetOffset(category, key):
 
 
 # Function to initialize offset
-def InitializeOffsets(file_path):
+def GetOffsets(file_path):
     """
     Initialize offsets by fetching and formatting them from the JSON file.
     """
     global offsets
+    # Check if offsets are already initialized
+    if offsets:
+        return offsets
     # Check if a file path is provided; if not, use the default path
     offsets = FetchOffsets(file_path)
-    # Format the offsets to hexadecimal
-    if offsets:
-        offsets = FormatOffsets(offsets)
-        if not offsets:
-            raise ValueError("Failed to format offsets.")
-    else:
+    if not offsets:
         raise ValueError("Failed to fetch offsets.")
+    # Format the offsets to hexadecimal
+    offsets = FormatOffsets(offsets)
+    if not offsets:
+        raise ValueError("Failed to format offsets.")
 
 
 # Read UTF-16 strings from memory
@@ -109,7 +114,9 @@ def ReadUTF16String(game, address, length):
 
 
 # Read the integer value from memory and format it if needed
-def ReadInteger(game, address, length, return_readable=False, start_bit=0):
+def ReadInteger(
+    game, address, length, return_readable=False, start_bit=0, use_start_bit=True
+):
     """
     Reads an integer from memory, optionally extracting a specific bit range.
 
@@ -132,17 +139,20 @@ def ReadInteger(game, address, length, return_readable=False, start_bit=0):
     raw_bytes = game.memory.read_bytes(address, num_bytes)
     integer_value = int.from_bytes(raw_bytes, byteorder="little")
 
-    # Apply the start bit and mask to extract the correct value
-    mask = (1 << length) - 1  # Create a mask for the bit length
-    integer_value = (
-        integer_value >> start_bit
-    ) & mask  # Extract the bits based on startBit and length
+    # Check if we need to extract a specific bit range
+    if use_start_bit:
+        # Apply the start bit and mask to extract the correct value
+        if start_bit > 0:
+            integer_value >>= start_bit  # Shift right to align bits
 
-    # Format the result if needed
+        mask = (1 << length) - 1  # Mask for desired bit length
+        integer_value &= mask  # Apply the mask
+    else:
+        num_bytes = length // 8  # Convert bits to bytes
+
     if return_readable:
         integer_value = ConvertToReadableValue(integer_value)
 
-    # Return the extracted integer value
     return integer_value
 
 
@@ -242,12 +252,26 @@ def BuildPlayer(game, player_id, explicit_player_address=None):
     :return: A Player object containing the player's data.
     """
     try:
-        # Calculate Player Base Address: Read 8-bytes because this will be a 64-bit pointer to the player data
-        # Note: This should probably only be done once and stored, but for simplicity and centralization, it's done here
+        # Find the base address for the player data
         player_base_address = game.memory.read_bytes(
             game.base_address + offsets["Base"]["Player Base Address"], 8
-        )  # Dereference the pointer to get the actual player base address
+        )
         player_base_address = int.from_bytes(player_base_address, byteorder="little")
+
+        # Go through the offset chain to get the actual player address
+        for offset in offsets["Base"]["Player Offset Chain"]:
+            offset_value = offset[0]
+            deref_offset = offset[1]
+            if deref_offset:
+                player_address = game.memory.read_bytes(
+                    player_base_address + offset_value, 8
+                )
+                player_address = int.from_bytes(player_address, byteorder="little")
+            else:
+                player_address = player_base_address + offset_value
+
+        # Add the player ID to the base address to get the specific player address
+        player_address += offsets["Base"]["Player Offset Length"] * player_id
 
         # Calculate the specific player address
         if explicit_player_address:
@@ -319,6 +343,7 @@ def BuildPlayer(game, player_id, explicit_player_address=None):
                     address,
                     length,
                     start_bit=start_bit,
+                    use_start_bit=False if skill_category == "Attributes" else True,
                     return_readable=return_readable,
                 )
                 string_repr = None
