@@ -18,7 +18,8 @@ written_in_integers = [
 # Write bytes to memory at a specific address
 def WriteBinaryBytes(game, address, length, value):
     """
-    Write bytes to memory at a specific address; only used for attributes because they are the only values that are written as bytes/binary
+    Write bytes to memory at a specific address; only used for attributes
+    because they are the only values that are written as bytes/binary
     while others are written as integers or strings.
 
     :param game: The game memory writer instance.
