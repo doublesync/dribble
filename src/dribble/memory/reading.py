@@ -14,6 +14,7 @@ offsets = None
 def FetchOffsets(file_path):
     offsets_file = open(file_path, "r")
     offsets_dict = json.load(offsets_file)
+    offsets_file.close()
     return offsets_dict
 
 
@@ -84,17 +85,16 @@ def GetOffsets(file_path):
     Initialize offsets by fetching and formatting them from the JSON file.
     """
     global offsets
-    # Check if offsets are already initialized
-    if offsets:
-        return offsets
-    # Check if a file path is provided; if not, use the default path
-    offsets = FetchOffsets(file_path)
     if not offsets:
-        raise ValueError("Failed to fetch offsets.")
-    # Format the offsets to hexadecimal
-    offsets = FormatOffsets(offsets)
-    if not offsets:
-        raise ValueError("Failed to format offsets.")
+        # Find the offsets & format them
+        offsets = FetchOffsets(file_path)
+        if not offsets:
+            raise ValueError("Failed to fetch offsets.")
+        offsets = FormatOffsets(offsets)
+        if not offsets:
+            raise ValueError("Failed to format offsets.")
+    # Return the formatted or existing offsets
+    return offsets
 
 
 # Read UTF-16 strings from memory
@@ -270,17 +270,12 @@ def BuildPlayer(game, player_id, explicit_player_address=None):
             else:
                 player_address = player_base_address + offset_value
 
-        # Add the player ID to the base address to get the specific player address
-        player_address += offsets["Base"]["Player Offset Length"] * player_id
-
         # Calculate the specific player address
         if explicit_player_address:
             player_address = explicit_player_address
         else:
-            player_address = (
-                player_base_address
-                + offsets["Base"]["Player Offset Length"] * player_id
-            )
+            # Add the player ID to the base address to get the specific player address
+            player_address += offsets["Base"]["Player Offset Length"] * player_id
 
         # Read player team data (address points to team address, where we can then get team details)
         team_address = GetTeamAddress(game, player_address)
